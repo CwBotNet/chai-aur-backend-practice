@@ -7,6 +7,7 @@ const asyncHandler = (requestHandlerFn) => {
   };
 };
 
+export { asyncHandler };
 // try cath method
 
 // const asyncHandler = (rhFun) => async (req, res, next) => {
