@@ -4,17 +4,22 @@ import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponce } from "../Utils/ApiResponce.js";
 import { uploadOnCloudinary } from "../Utils/cloudinary.js";
 import jwt from "jsonwebtoken";
+
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
-    const accessToken = user.generateAccessAndRefreshTokens();
+    console.log(user);
+    const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
     return { accessToken, refreshToken };
   } catch (error) {
-    throw new ApiError(500, "Somthing went wrong while creating tokens");
+    throw new ApiError(
+      500,
+      `Somthing went wrong while creating tokens ${error}`
+    );
   }
 };
 
@@ -48,9 +53,9 @@ const registerUser = asyncHandler(async (req, res) => {
       throw new ApiError(409, "user with this email already exists");
     }
 
-    // console.log(req.files);
+    console.log(req.files);
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    console.log(avatarLocalPath);
+    // console.log(avatarLocalPath);
     // const coverImageLocalPath = req.files?.coverImage[0].path;
 
     let coverImageLocalPath;
@@ -67,19 +72,20 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
+    // console.log(avatar);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
     if (!avatar) {
-      throw new ApiError(400, "Avatar file is requied");
+      throw new ApiError(400, "Avatar file is required");
     }
 
-    const user = await user.create({
+    const user = await User.create({
       fullName,
       avatar: avatar.url,
       coverImage: coverImage?.url || "",
       email,
       password,
-      username: username.toLowercase(),
+      username: username.toLowerCase(),
     });
 
     const createdUser = await User.findById(user._id).select(
@@ -105,7 +111,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
   // login method username or email
-  if (!username || !email) {
+  if (!username && !email) {
     throw new ApiError(401, "username or email is required");
   }
 
@@ -120,6 +126,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const isPasswordMatched = await user.isPasswordCorrect(password);
   if (!isPasswordMatched) throw new ApiError(401, "Invalid user credentials");
   // create and send token
+  console.log(user._id);
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id
   );
@@ -189,7 +196,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET
     );
     // find user by decoded token data
-    const user = await User.findById(decodedToken?.userId);
+    const user = await User.findById(decodedToken?._id);
     if (!user) throw new ApiError(401, "Invalid refresh Token");
     // check if user's current token is same as what we have in db
     if (incomingRefreshToken !== user?.refreshToken)
