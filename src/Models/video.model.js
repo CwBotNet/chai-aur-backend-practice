@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 const videoSchema = new Schema(
   {
-    videFile: {
+    videoFile: {
       type: String, // cloudinary url
       required: true,
     },
