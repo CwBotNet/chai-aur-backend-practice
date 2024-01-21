@@ -2,8 +2,8 @@ import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponce } from "../Utils/ApiResponce.js";
 import { Video } from "../Models/video.model.js";
 import { asyncHandler } from "../Utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../Utils/cloudinary.js";
-import { updateUserAvatar } from "./user.controller.js";
+import { getVideoDureation, uploadOnCloudinary } from "../Utils/cloudinary.js";
+
 // crud - crontrollers for video
 
 // Create
@@ -13,7 +13,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
     const { title, description } = req.body;
     if (!title || !description) throw new ApiError(401, "fields are required");
 
-    const videoFileLocalPath = req.files?.videoFile[0];
+    const videoFileLocalPath = req.files?.videoFile[0].path;
     console.log(videoFileLocalPath);
 
     let thumbnailLocalPath;
@@ -33,12 +33,16 @@ const uploadVideo = asyncHandler(async (req, res) => {
     // video check
     if (!video) throw new ApiError(400, "video file is required");
 
+    // get video dureation
+
+    const dureation = await getVideoDureation(video.public_id);
+
     // upload video
     const videoUpload = await Video.create({
       title,
       description,
       videoFile: video?.url,
-      // duration: video?.format,
+      duration: dureation,
       thumbnail: thumbnail?.url || "",
     });
 
@@ -57,7 +61,12 @@ const uploadVideo = asyncHandler(async (req, res) => {
 
 // publish controller
 
-const publishVideo = asyncHandler(async (req, res) => {});
+const togglePublishVideo = asyncHandler(async (req, res) => {
+  // get video
+  const currentVideo = Video.findById(res.params._id);
+  console.log(currentVideo);
+  // set video ispubished to true of false
+});
 
 // Read
 const getVideo = asyncHandler(async (req, res) => {});
@@ -70,4 +79,11 @@ const updateVideo = asyncHandler(async (req, res) => {});
 // Delete
 const deleteVideo = asyncHandler(async (req, res) => {});
 
-export { uploadVideo };
+export {
+  uploadVideo,
+  togglePublishVideo,
+  getVideo,
+  getAllVideos,
+  updateVideo,
+  deleteVideo,
+};
