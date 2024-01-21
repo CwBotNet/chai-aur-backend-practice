@@ -53,25 +53,74 @@ const uploadVideo = asyncHandler(async (req, res) => {
     // if uploaded return video url and duration
     return res
       .status(200)
-      .json(new ApiResponce(200, "video uploaded successfully"));
+      .json(new ApiResponce(200, uploadedVideo, "video uploaded successfully"));
   } catch (error) {
     throw new ApiError(500, `uploading Error ${error?.message}`);
   }
 });
 
 // publish controller
-
 const togglePublishVideo = asyncHandler(async (req, res) => {
-  // get video
-  const currentVideo = Video.findById(res.params._id);
-  console.log(currentVideo);
-  // set video ispubished to true of false
+  try {
+    // get video
+    const { id } = req.params;
+    const currentVideo = await Video.findById(id);
+    // console.log(currentVideo.isPublished);
+
+    // id check
+    if (!currentVideo) throw new ApiError(400, "video not found by the id");
+
+    // set video ispubished to true of false
+    if (currentVideo.isPublished === false) {
+      currentVideo.isPublished = true;
+      await currentVideo.save();
+    } else if (currentVideo.isPublished === true) {
+      currentVideo.isPublished = false;
+      await currentVideo.save();
+    }
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponce(
+          200,
+          currentVideo.isPublished
+            ? "video is published"
+            : "video is unpublished",
+          currentVideo
+        )
+      );
+  } catch (error) {
+    throw new ApiError(
+      401,
+      `somthing went wrong while publishing the video ${error?.message}`
+    );
+  }
 });
 
 // Read
-const getVideo = asyncHandler(async (req, res) => {});
+const getVideo = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const video = await Video.findById(id);
+    if (!video) throw new ApiError(404, "video not found");
 
-const getAllVideos = asyncHandler(async (req, res) => {});
+    // chech publish status
+    if (video.isPublished === false)
+      throw new ApiError(404, "video is unavilable");
+
+    // show user published video only
+    return res
+      .status(200)
+      .json(new ApiResponce(200, video, "video fetched successfully"));
+  } catch (error) {
+    throw new ApiError(500, `unable to get the video ${error?.message}`);
+  }
+});
+
+const getAllVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+});
 
 // Update
 const updateVideo = asyncHandler(async (req, res) => {});
