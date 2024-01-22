@@ -2,14 +2,25 @@ import { Router } from "express";
 import { verifyJwt } from "../Middlewares/auth.middleware.js";
 import { upload } from "../Middlewares/multer.middleware.js";
 import {
+  deleteVideo,
+  getAllVideos,
   getVideo,
   togglePublishVideo,
+  updateVideoThumbnail,
   uploadVideo,
 } from "../Controllers/Video.controller.js";
 
 const router = Router();
 
 router.use(verifyJwt);
+
+router.route("/").get(getAllVideos);
+
+router
+  .route("/:id")
+  .get(getVideo)
+  .patch(upload.single("thumbnail"), updateVideoThumbnail)
+  .delete(deleteVideo);
 
 router.route("/upload-video").post(
   upload.fields([
@@ -18,8 +29,6 @@ router.route("/upload-video").post(
   ]),
   uploadVideo
 );
-
 router.route("/publish-video/:id").patch(togglePublishVideo);
-router.route("/get-video/:id").get(getVideo);
 
 export default router;
