@@ -59,45 +59,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
   }
 });
 
-// publish controller
-const togglePublishVideo = asyncHandler(async (req, res) => {
-  try {
-    // get video
-    const { id } = req.params;
-    const currentVideo = await Video.findById(id);
-    // console.log(currentVideo.isPublished);
-
-    // id check
-    if (!currentVideo) throw new ApiError(400, "video not found by the id");
-
-    // set video ispubished to true of false
-    if (currentVideo.isPublished === false) {
-      currentVideo.isPublished = true;
-      await currentVideo.save();
-    } else if (currentVideo.isPublished === true) {
-      currentVideo.isPublished = false;
-      await currentVideo.save();
-    }
-
-    return res
-      .status(200)
-      .json(
-        new ApiResponce(
-          200,
-          currentVideo.isPublished
-            ? "video is published"
-            : "video is unpublished",
-          currentVideo
-        )
-      );
-  } catch (error) {
-    throw new ApiError(
-      401,
-      `somthing went wrong while publishing the video ${error?.message}`
-    );
-  }
-});
-
 // Read
 const getVideo = asyncHandler(async (req, res) => {
   try {
@@ -211,13 +172,98 @@ const updateVideoThumbnail = asyncHandler(async (req, res) => {
 });
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
-  // get video id from params
-  // send a delete req to the db for that id
-  // send responce
+  try {
+    // get id from params
+    const { id } = req.params;
+    // get update data from body
+    const { title, description } = req.body;
+    // check video id
+    if (!id) throw new ApiError(404, "video id not found for update");
+    if (!title || !description) throw new ApiError(400, "fields are required");
+    // find and update details
+    const video = await Video.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          title,
+          description,
+        },
+      },
+      { new: true }
+    );
+    // update check
+    if (!video) throw new ApiError(401, "unable to update");
+    // send response
+    return res
+      .status(200)
+      .json(new ApiResponce(200, video, "video details updated"));
+  } catch (error) {
+    throw new ApiError(
+      405,
+      `somthing went worng while updating: ${error?.message}`
+    );
+  }
+});
+
+// publish controller
+const togglePublishVideo = asyncHandler(async (req, res) => {
+  try {
+    // get video
+    const { id } = req.params;
+    const currentVideo = await Video.findById(id);
+    // console.log(currentVideo.isPublished);
+
+    // id check
+    if (!currentVideo) throw new ApiError(400, "video not found by the id");
+
+    // set video ispubished to true of false
+    if (currentVideo.isPublished === false) {
+      currentVideo.isPublished = true;
+      await currentVideo.save();
+    } else if (currentVideo.isPublished === true) {
+      currentVideo.isPublished = false;
+      await currentVideo.save();
+    }
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponce(
+          200,
+          currentVideo.isPublished
+            ? "video is published"
+            : "video is unpublished",
+          currentVideo
+        )
+      );
+  } catch (error) {
+    throw new ApiError(
+      401,
+      `somthing went wrong while publishing the video ${error?.message}`
+    );
+  }
 });
 
 // Delete
-const deleteVideo = asyncHandler(async (req, res) => {});
+const deleteVideo = asyncHandler(async (req, res) => {
+  try {
+    // get video id from params
+    const { id: videoId } = req.params;
+
+    if (!videoId) throw new ApiError(404, "video id is not valid");
+
+    // send a delete req to the db for that id
+    const deleteVideo = await Video.findByIdAndDelete(videoId);
+
+    if (!deleteVideo) throw new ApiError(401, "video is all ready deleted");
+    // send responce
+    return res
+      .status(200)
+      .json(new ApiResponce(200, "video is deleted successfully"));
+  } catch (error) {
+    throw new ApiError(405, `can't delete video : ${error?.message}`);
+  }
+});
 
 export {
   uploadVideo,
@@ -225,5 +271,6 @@ export {
   getVideo,
   getAllVideos,
   updateVideoThumbnail,
+  updateVideoDetails,
   deleteVideo,
 };
