@@ -42,6 +42,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
       title,
       description,
       videoFile: video?.url,
+      owner: req.user._id,
       duration: dureation,
       thumbnail: thumbnail?.url || "",
     });
