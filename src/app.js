@@ -20,8 +20,11 @@ app.use(cookieParser());
 import userRouter from "./Routes/user.router.js";
 import videoRouter from "./Routes/video.router.js";
 import likeRouter from "./Routes/like.router.js";
+import tweetRouter from "./Routes/tweet.router.js";
+
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/video", videoRouter);
 app.use("/api/v1/like", likeRouter);
+app.use("/api/v1/tweet", tweetRouter);
 
 export { app };

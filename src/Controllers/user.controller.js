@@ -411,10 +411,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
 const getUserWatchHistory = asyncHandler(async (req, res) => {
   try {
-    const user = User.aggregate([
+    const user = await User.aggregate([
       {
         $match: {
-          _id: new mongoose.Types.ObjectId(req.user?._id),
+          _id: new mongoose.Types.ObjectId(req.user._id),
         },
       },
       {
@@ -433,8 +433,8 @@ const getUserWatchHistory = asyncHandler(async (req, res) => {
                 pipeline: [
                   {
                     $project: {
-                      fullName: 1,
                       username: 1,
+                      fullName: 1,
                       avatar: 1,
                     },
                   },
@@ -457,7 +457,7 @@ const getUserWatchHistory = asyncHandler(async (req, res) => {
       .json(
         new ApiResponce(
           200,
-          user[0]?.watchHistory || [],
+          user[0].watchHistory,
           "Watch history fetched successfully"
         )
       );
