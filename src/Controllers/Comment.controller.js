@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Comment } from "../Models/comment.model.js";
 import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponce } from "../Utils/ApiResponce.js";
@@ -9,28 +10,71 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const { id: videoId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    if (!videoId) throw new ApiError(400, "no video is found");
-
-    const filter = {};
-
-    if (videoId) {
-      filter.video = videoId;
+    if (!videoId) {
+      throw new ApiError(400, "No video found");
     }
 
-    // find and filter comments from db for a particular video
-    const commnets = await Comment.find(filter)
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const filter = { video: new mongoose.Types.ObjectId(videoId) };
 
-    if (!commnets) throw new ApiError(401, "unable to fetch comments");
+    const commentsAggregate = Comment.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: "users",
+          localField: "owner",
+          foreignField: "_id",
+          as: "owner",
+        },
+      },
+      {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "comment",
+          as: "likes",
+        },
+      },
+      {
+        $addFields: {
+          likesCount: { $size: "$likes" },
+          owner: { $first: "$owner" },
+          isLiked: {
+            $cond: {
+              if: { $in: [req.user?._id, "$likes.likedBy"] },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          content: 1,
+          createdAt: 1,
+          likesCount: 1,
+          owner: { username: 1, fullName: 1, "avatar": 1 },
+          isLiked: 1,
+        },
+      },
+    ]);
+
+    const options = {
+      page: parseInt(page, 10) || 1,
+      limit: parseInt(limit, 10) || 10,
+    };
+
+    const comments = await Comment.aggregatePaginate(
+      commentsAggregate,
+      options
+    );
 
     return res
       .status(200)
-      .json(new ApiResponce(200, commnets, "comments fetched successfully"));
+      .json(new ApiResponce(200, comments, "Comments fetched successfully"));
   } catch (error) {
     throw new ApiError(
       500,
-      `server Error white fetching comments : ${error?.message}`
+      `Server Error while fetching comments: ${error?.message}`
     );
   }
 });
