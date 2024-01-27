@@ -23,11 +23,14 @@ import likeRouter from "./Routes/like.router.js";
 import tweetRouter from "./Routes/tweet.router.js";
 import commentRouter from "./Routes/comment.router.js";
 import subscriptionRouter from "./Routes/subscription.router.js";
+import healthcheckRouter from "./Routes/healthcheck.router.js";
+
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/video", videoRouter);
 app.use("/api/v1/like", likeRouter);
 app.use("/api/v1/tweet", tweetRouter);
 app.use("/api/v1/comment", commentRouter);
 app.use("/api/v1/subscription", subscriptionRouter);
+app.use("/api/v1/healthcheck", healthcheckRouter);
 
 export { app };
