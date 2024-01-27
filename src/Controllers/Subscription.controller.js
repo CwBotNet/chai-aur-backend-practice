@@ -1,5 +1,4 @@
 import mongoose, { isValidObjectId } from "mongoose";
-import { User } from "../Models/user.model.js";
 import { Subscription } from "../Models/subscription.model.js";
 import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponce } from "../Utils/ApiResponce.js";
@@ -72,31 +71,32 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
                 from: "subscriptions",
                 localField: "_id",
                 foreignField: "channel",
-                as: "subscribedToSubscriber",
+                as: "subtosubscriber",
               },
             },
             {
               $addFields: {
-                subscribedToSubscriber: {
+                subtosubscriber: {
                   $cond: {
                     if: {
-                      $in: [channelId, "$subscribedToSubscriber.subscriber"],
+                      $in: [
+                        new mongoose.Types.ObjectId(channelId),
+                        "$subtosubscriber.subscriber",
+                      ],
                     },
                     then: true,
                     else: false,
                   },
                 },
                 subscribersCount: {
-                  $size: "$subscribedToSubscriber",
+                  $size: "$subtosubscriber",
                 },
               },
             },
           ],
         },
       },
-      {
-        $unwind: "$subscriber",
-      },
+      { $unwind: "$subscriber" },
       {
         $project: {
           _id: 0,
@@ -104,8 +104,8 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
             _id: 1,
             username: 1,
             fullName: 1,
-            "avatar": 1,
-            subscribedToSubscriber: 1,
+            avatar: 1,
+            subtosubscriber: 1,
             subscribersCount: 1,
           },
         },
@@ -143,31 +143,68 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
       throw new ApiError(400, "Unauthorized");
     }
 
-    // Retrieve subscribed channels using aggregation
-    const channels = await Subscription.aggregatePaginate([
-      // Match subscriptions for the given subscriber
-      { $match: { subscriber: subscriberId } },
-
-      // Lookup channel information for each subscription
+    const pipeline = [
       {
-        $lookup: {
-          from: "channels",
-          localField: "channel",
-          foreignField: "_id",
-          as: "channelData",
+        $match: {
+          subscriber: new mongoose.Types.ObjectId(subscriberId),
         },
       },
-
-      // Unwind the channelData array
-      { $unwind: "$channelData" },
-
-      // Restrict results to authorized user (if applicable)
-      { $match: { $expr: { $eq: ["$_id", userId] } } },
-
-      // Pagination (assuming `page` and `limit` query parameters)
-      { $skip: (req.query.page - 1) * req.query.limit },
-      { $limit: req.query.limit },
-    ]);
+      {
+        $lookup: {
+          from: "users",
+          localField: "channel",
+          foreignField: "_id",
+          as: "channel",
+          pipeline: [
+            {
+              $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribeTochannel",
+              },
+            },
+            {
+              $addFields: {
+                subscribeTochannel: {
+                  $cond: {
+                    if: {
+                      $in: [
+                        new mongoose.Types.ObjectId(subscriberId),
+                        "$subscribeTochannel.channel",
+                      ],
+                    },
+                    then: true,
+                    else: false,
+                  },
+                },
+                subscriberCount: {
+                  $size: "$subscribeTochannel",
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $unwind: "$channel",
+      },
+      {
+        $project: {
+          _id: 0,
+          channel: {
+            _id: 1,
+            username: 1,
+            fullName: 1,
+            avatar: 1,
+            subscribeTochannel: 1,
+            subscriberCount: 1,
+          },
+        },
+      },
+    ];
+    // Retrieve subscribed channels using aggregation
+    const channels = await Subscription.aggregate(pipeline);
 
     res.status(200).json(channels);
   } catch (error) {
